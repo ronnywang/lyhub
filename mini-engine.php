@@ -477,9 +477,18 @@ class MiniEngine_Controller
         exit;
     }
 
+    protected $_header_sent = [];
+    public function header($header)
+    {
+        header($header);
+        $this->_header_sent[strtolower(explode(':', $header)[0])] = true;
+    }
+
     public function json($data)
     {
-        header('Content-Type: application/json');
+        if (!($this->_header_sent['content-type'] ?? false)) {
+            header('Content-Type: application/json');
+        }
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return $this->noview();
     }
