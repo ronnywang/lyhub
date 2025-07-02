@@ -9,7 +9,15 @@ MiniEngine::dispatch(function($uri){
         return ['index', 'webfinger'];
     }
     if (strpos($uri, '/users/') === 0) {
-        return ['index', 'user'];
+        $terms = explode('/', trim($uri, '/'));
+        if (count($terms) == 2) {
+            return ['index', 'user'];
+        }
+        if (in_array($terms[2] ?? false, [
+            'outbox',
+        ])) {
+            return ['index', $terms[2]];
+        }
     }
     // default
     return null;

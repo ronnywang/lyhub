@@ -2,6 +2,47 @@
 
 class IndexController extends MiniEngine_Controller
 {
+    protected function formatActivityObject($account, $record)
+    {
+        $ret = [];
+        if ($record[0] == 'bill-first') {
+            $id = $record[2]->議案編號 ?? '';
+            $content = "【提案】{$record[2]->議案名稱} ({$record[2]->議案編號})\n提案日期：{$record[2]->提案日期}\n\n";
+        } elseif ($record[0] == 'bill-second') {
+            $id = $record[2]->議案編號 ?? '';
+            $content = "【連署】{$record[2]->議案名稱} ({$record[2]->議案編號})\n提案日期：{$record[2]->提案日期}\n\n";
+        } else {
+            $id = $record[2]->IVOD_ID;
+            $content = "【影音】{$record[2]->標題}\n開始時間：{$record[2]->開始時間}\n\n";
+        }
+        $ret['id'] = "https://{$_SERVER['HTTP_HOST']}/users/{$account}/statuses/{$record[0]}-{$id}";
+        $ret['type'] = 'Create';
+        $ret['published'] = date('Y-m-d\TH:i:sP', $record[1]);
+        $ret['to'] = ['https://www.w3.org/ns/activitystreams#Public'];
+        $ret['actor'] = "https://{$_SERVER['HTTP_HOST']}/users/{$account}";
+        $ret['object'] = [
+            'id' => $ret['id'],
+            'type' => 'Note',
+            'summary' => null,
+            'url' => "https://{$_SERVER['HTTP_HOST']}/users/{$account}/statuses/{$record[0]}-{$id}",
+            'published' => $ret['published'],
+            'attributedTo' => "https://{$_SERVER['HTTP_HOST']}/users/{$account}",
+            'to' => ['https://www.w3.org/ns/activitystreams#Public'],
+            'content' => $content,
+        ];
+        return $ret;
+    }
+
+    protected function getMPData($mp_id)
+    {
+        $obj = LYAPI::apiQuery("/legislators?歷屆立法委員編號={$mp_id}&sort=屆", "取得立法委員資料");
+        if (!$obj->legislators || !is_array($obj->legislators) || count($obj->legislators) === 0) {
+            header('HTTP/1.1 404 Not Found');
+            exit;
+        }
+        return $obj->legislators[0];
+    }
+
     public function indexAction()
     {
         $this->view->app_name = getenv('APP_NAME');
@@ -33,11 +74,7 @@ class IndexController extends MiniEngine_Controller
         ];
         if (preg_match('#^mp-(\d+)$#', $username, $matches)) {
             $mp_id = $matches[1];
-            $obj = LYAPI::apiQuery("/legislators?歷屆立法委員編號={$mp_id}&sort=屆", "取得立法委員資料");
-            if (!$obj->legislators || !is_array($obj->legislators) || count($obj->legislators) === 0) {
-                header('HTTP/1.1 404 Not Found');
-                exit;
-            }
+            $mp_data = $this->getMPData($mp_id);
             $response['aliases'] = [
                 "https://{$_SERVER['HTTP_HOST']}/mp/{$mp_id}",
             ];
@@ -49,7 +86,7 @@ class IndexController extends MiniEngine_Controller
             $response['links'][] = [
                 'rel' => 'http://webfinger.net/rel/avatar',
                 'type' => 'image/png',
-                'href' => $obj->legislators[0]->照片位址,
+                'href' => $mp_data->照片位址,
             ];
         } elseif (preg_match('#^law-(\d+)$#', $username, $matches)) {
         } elseif (preg_match('#^committee-(\d+)$#', $username, $matches)) {
@@ -58,7 +95,7 @@ class IndexController extends MiniEngine_Controller
             exit;
         }
 
-        header('Content-Type: application/jrd+json; charset=utf-8');
+        $this->header('Content-Type: application/jrd+json; charset=utf-8');
         return $this->json($response);
     }
 
@@ -111,19 +148,19 @@ class IndexController extends MiniEngine_Controller
         ];
         $response['id'] = "https://{$domain}/users/{$account}";
         $response['type'] = 'Person';
-        $response['following'] = "https://{$domain}/users/{$account}/following";
-        $response['followers'] = "https://{$domain}/users/{$account}/followers";
+        //$response['following'] = "https://{$domain}/users/{$account}/following";
+        //$response['followers'] = "https://{$domain}/users/{$account}/followers";
         $response['inbox'] = "https://{$domain}/users/{$account}/inbox";
         $response['outbox'] = "https://{$domain}/users/{$account}/outbox";
-        $response['featured'] = "https://{$domain}/users/{$account}/featured";
-        $response['featuredTags'] = "https://{$domain}/users/{$account}/featured-tags";
+        //$response['featured'] = "https://{$domain}/users/{$account}/featured";
+        //$response['featuredTags'] = "https://{$domain}/users/{$account}/featured-tags";
         $response['preferredUsername'] = $account;
         $response['name'] = '';
         $response['summary'] = '';
-        $response['url'] = "https://{$domain}/mp/{$mp_id}";
+        $response['url'] = '';
         $response['manuallyApprovesFollowers'] = false;
-        $response['discoverable'] = true;
-        $response['indexable'] = true;
+        $response['discoverable'] = false;
+        $response['indexable'] = false;
         $response['published'] = date('Y-m-d\TH:i:sP');
         $response['memorial'] = false;
         $response['publicKey'] = [
@@ -138,27 +175,111 @@ class IndexController extends MiniEngine_Controller
         ];
         if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
             $mp_id = $matches[1];
-            $obj = LYAPI::apiQuery("/legislators?歷屆立法委員編號={$mp_id}&sort=屆", "取得立法委員資料");
-            if (!$obj->legislators || !is_array($obj->legislators) || count($obj->legislators) === 0) {
-                header('HTTP/1.1 404 Not Found');
-                exit;
-            }
-            $response['name'] = $obj->legislators[0]->委員姓名;
+            $mp_data = $this->getMPData($mp_id);
+            $response['name'] = $mp_data->委員姓名;
             $response['summary'] = sprintf("[國會資訊推播器]\n第%02d屆立法委員\n黨籍:%s，選區：%s\n委員會：%s",
-                $obj->legislators[0]->屆,
-                $obj->legislators[0]->黨籍,
-                $obj->legislators[0]->選區名稱,
-                $obj->legislators[0]->委員會[count($obj->legislators[0]->委員會) - 1],
+                $mp_data->屆,
+                $mp_data->黨籍,
+                $mp_data->選區名稱,
+                $mp_data->委員會[count($mp_data->委員會) - 1],
             );
             $response['icon'] = [
                 'type' => 'Image',
                 'mediaType' => 'image/jpeg',
-                'url' => $obj->legislators[0]->照片位址,
+                'url' => $mp_data->照片位址,
             ];
+            $response['url'] = "https://{$domain}/mp/{$mp_id}";
         } else {
             header('HTTP/1.1 400 Bad Request');
             exit;
         }
+        return $this->json($response);
+    }
+
+    public function outbox_cursor($account, $domain, $cursor)
+    {
+        $response = [];
+        $response['@context'] = [
+            'https://www.w3.org/ns/activitystreams',
+            [
+                'ostatus' => 'http://ostatus.org#',
+                'atomUri' => 'ostatus:inReplyToAtomUri',
+                'conversation' => 'ostatus:conversation',
+                'sensitive' => 'as:sensitive',
+                'toot' => 'http://joinmastodon.org/ns#',
+                'votersCount' => 'toot:votersCount',
+                'blurhash' => 'toot:blurhash',
+                'focalPoint' => [
+                    '@container' => '@list',
+                    '@id' => 'toot:focalPoint',
+                ],
+            ],
+        ];
+        $response['id'] = "https://{$domain}/users/{$account}/outbox?cursor={$cursor}";
+        $response['type'] = 'OrderedCollectionPage';
+        $response['partOf'] = "https://{$domain}/users/{$account}/outbox";
+        $response['next'] = "https://{$domain}/users/{$account}/outbox?cursor=" . ($cursor + 1);
+        $response['orderedItems'] = [];
+        $records = [];
+        if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
+            $mp_id = $matches[1];
+            $mp_data = $this->getMPData($mp_id);
+            $bill_fields = '&output_fields=議案名稱&output_fields=提案日期&output_fields=議案編號';
+            $obj = LYAPI::apiQuery("/bills?連署人={$mp_data->委員姓名}&limit=20{$bill_fields}", "取得連署列表");
+            foreach ($obj->bills as $bill) {
+                $records[] = ['bill-second', strtotime($bill->提案日期), $bill];
+            }
+            $obj = LYAPI::apiQuery("/bills?提案人={$mp_data->委員姓名}&limit=20{$bill_fields}", "取得提案列表");
+            foreach ($obj->bills as $bill) {
+                $records[] = ['bill-first', strtotime($bill->提案日期), $bill];
+            }
+            $obj = LYAPI::apiQuery("/ivods?委員名稱={$mp_data->委員姓名}&limit=20", "取得影音列表");
+            foreach ($obj->ivods as $ivod) {
+                $records[] = ['ivod', strtotime($ivod->開始時間), $ivod];
+            }
+            usort($records, function ($a, $b) {
+                if ($b[1] != $a[1]) {
+                    return $b[1] <=> $a[1];
+                }
+                // 如果相同，就依照 bill提案 > bill連署 > ivod 的順序
+                $order = ['bill-first' => 1, 'bill-second' => 2, 'ivod' => 3];
+                return $order[$a[0]] <=> $order[$b[0]];
+            });
+            $records = array_slice($records, 0, 20);
+            foreach ($records as $record) {
+                $response['orderedItems'][] = $this->formatActivityObject($account, $record);
+            }
+        }
+        $this->header('Content-Type: application/activity+json; charset=utf-8');
+        return $this->json($response);
+    }
+
+    public function outboxAction()
+    {
+        $account = urldecode(explode('/', $_SERVER['REQUEST_URI'])[2] ?? '');
+        $domain = $_SERVER['HTTP_HOST'];
+
+        if (array_key_exists('cursor', $_GET)) {
+            return $this->outbox_cursor($account, $domain, $_GET['cursor']);
+        }
+        $response = [];
+        $response['@context'] = 'https://www.w3.org/ns/activitystreams';
+        $response['id'] = "https://{$domain}/users/{$account}/outbox";
+        $response['type'] = 'OrderedCollection';
+        $response['totalItems'] = 0;
+        if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
+            $mp_id = $matches[1];
+            $mp_data = $this->getMPData($mp_id);
+            $obj = LYAPI::apiQuery("/bills?連署人={$mp_data->委員姓名}&limit=0", "取得連署數量");
+            $response['totalItems'] = $obj->total;
+            $obj = LYAPI::apiQuery("/bills?提案人={$mp_data->委員姓名}&limit=0", "取得提案數量");
+            $response['totalItems'] += $obj->total;
+            $obj = LYAPI::apiQuery("/ivods?委員名稱={$mp_data->委員姓名}&limit=0", "取得影音數量");
+            $response['totalItems'] += $obj->total;
+        }
+        $response['first'] = 'https://' . $domain . '/users/' . $account . '/outbox?cursor=0';
+        $response['last'] = 'https://' . $domain . '/users/' . $account . '/outbox?cursor=-1';
+        $this->header('Content-Type: application/activity+json; charset=utf-8');
         return $this->json($response);
     }
 }
