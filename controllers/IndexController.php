@@ -2,47 +2,6 @@
 
 class IndexController extends MiniEngine_Controller
 {
-    protected function formatActivityObject($account, $record)
-    {
-        $ret = [];
-        if ($record[0] == 'bill-first') {
-            $id = $record[2]->議案編號 ?? '';
-            $content = "【提案】{$record[2]->議案名稱} ({$record[2]->議案編號})\n提案日期：{$record[2]->提案日期}\n\n";
-        } elseif ($record[0] == 'bill-second') {
-            $id = $record[2]->議案編號 ?? '';
-            $content = "【連署】{$record[2]->議案名稱} ({$record[2]->議案編號})\n提案日期：{$record[2]->提案日期}\n\n";
-        } else {
-            $id = $record[2]->IVOD_ID;
-            $content = "【影音】{$record[2]->標題}\n開始時間：{$record[2]->開始時間}\n\n";
-        }
-        $ret['id'] = "https://{$_SERVER['HTTP_HOST']}/users/{$account}/statuses/{$record[0]}-{$id}";
-        $ret['type'] = 'Create';
-        $ret['published'] = date('Y-m-d\TH:i:sP', $record[1]);
-        $ret['to'] = ['https://www.w3.org/ns/activitystreams#Public'];
-        $ret['actor'] = "https://{$_SERVER['HTTP_HOST']}/users/{$account}";
-        $ret['object'] = [
-            'id' => $ret['id'],
-            'type' => 'Note',
-            'summary' => null,
-            'url' => "https://{$_SERVER['HTTP_HOST']}/users/{$account}/statuses/{$record[0]}-{$id}",
-            'published' => $ret['published'],
-            'attributedTo' => "https://{$_SERVER['HTTP_HOST']}/users/{$account}",
-            'to' => ['https://www.w3.org/ns/activitystreams#Public'],
-            'content' => $content,
-        ];
-        return $ret;
-    }
-
-    protected function getMPData($mp_id)
-    {
-        $obj = LYAPI::apiQuery("/legislators?歷屆立法委員編號={$mp_id}&sort=屆", "取得立法委員資料");
-        if (!$obj->legislators || !is_array($obj->legislators) || count($obj->legislators) === 0) {
-            header('HTTP/1.1 404 Not Found');
-            exit;
-        }
-        return $obj->legislators[0];
-    }
-
     public function indexAction()
     {
         $this->view->app_name = getenv('APP_NAME');
@@ -74,7 +33,7 @@ class IndexController extends MiniEngine_Controller
         ];
         if (preg_match('#^mp-(\d+)$#', $username, $matches)) {
             $mp_id = $matches[1];
-            $mp_data = $this->getMPData($mp_id);
+            $mp_data = LYDataHelper::getMPData($mp_id);
             $response['aliases'] = [
                 "https://{$_SERVER['HTTP_HOST']}/mp/{$mp_id}",
             ];
@@ -175,7 +134,7 @@ class IndexController extends MiniEngine_Controller
         ];
         if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
             $mp_id = $matches[1];
-            $mp_data = $this->getMPData($mp_id);
+            $mp_data = LYDataHelper::getMPData($mp_id);
             $response['name'] = $mp_data->委員姓名;
             $response['summary'] = sprintf("[國會資訊推播器]\n第%02d屆立法委員\n黨籍:%s，選區：%s\n委員會：%s",
                 $mp_data->屆,
@@ -223,7 +182,7 @@ class IndexController extends MiniEngine_Controller
         $records = [];
         if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
             $mp_id = $matches[1];
-            $mp_data = $this->getMPData($mp_id);
+            $mp_data = LYDataHelper::getMPData($mp_id);
             $bill_fields = '&output_fields=議案名稱&output_fields=提案日期&output_fields=議案編號';
             $obj = LYAPI::apiQuery("/bills?連署人={$mp_data->委員姓名}&limit=20{$bill_fields}", "取得連署列表");
             foreach ($obj->bills as $bill) {
@@ -247,7 +206,7 @@ class IndexController extends MiniEngine_Controller
             });
             $records = array_slice($records, 0, 20);
             foreach ($records as $record) {
-                $response['orderedItems'][] = $this->formatActivityObject($account, $record);
+                $response['orderedItems'][] = LYDataHelper::formatActivityObject($account, $record);
             }
         }
         $this->header('Content-Type: application/activity+json; charset=utf-8');
@@ -316,7 +275,7 @@ class IndexController extends MiniEngine_Controller
         $response['totalItems'] = 0;
         if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
             $mp_id = $matches[1];
-            $mp_data = $this->getMPData($mp_id);
+            $mp_data = LYDataHelper::getMPData($mp_id);
             $obj = LYAPI::apiQuery("/bills?連署人={$mp_data->委員姓名}&limit=0", "取得連署數量");
             $response['totalItems'] = $obj->total;
             $obj = LYAPI::apiQuery("/bills?提案人={$mp_data->委員姓名}&limit=0", "取得提案數量");
