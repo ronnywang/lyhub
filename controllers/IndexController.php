@@ -183,28 +183,7 @@ class IndexController extends MiniEngine_Controller
         if (preg_match('#^mp-(\d+)$#', $account, $matches)) {
             $mp_id = $matches[1];
             $mp_data = LYDataHelper::getMPData($mp_id);
-            $bill_fields = '&output_fields=議案名稱&output_fields=提案日期&output_fields=議案編號';
-            $obj = LYAPI::apiQuery("/bills?連署人={$mp_data->委員姓名}&limit=20{$bill_fields}", "取得連署列表");
-            foreach ($obj->bills as $bill) {
-                $records[] = ['bill-second', strtotime($bill->提案日期), $bill];
-            }
-            $obj = LYAPI::apiQuery("/bills?提案人={$mp_data->委員姓名}&limit=20{$bill_fields}", "取得提案列表");
-            foreach ($obj->bills as $bill) {
-                $records[] = ['bill-first', strtotime($bill->提案日期), $bill];
-            }
-            $obj = LYAPI::apiQuery("/ivods?委員名稱={$mp_data->委員姓名}&limit=20", "取得影音列表");
-            foreach ($obj->ivods as $ivod) {
-                $records[] = ['ivod', strtotime($ivod->開始時間), $ivod];
-            }
-            usort($records, function ($a, $b) {
-                if ($b[1] != $a[1]) {
-                    return $b[1] <=> $a[1];
-                }
-                // 如果相同，就依照 bill提案 > bill連署 > ivod 的順序
-                $order = ['bill-first' => 1, 'bill-second' => 2, 'ivod' => 3];
-                return $order[$a[0]] <=> $order[$b[0]];
-            });
-            $records = array_slice($records, 0, 20);
+            $records = LYDataHelper::getMPRecords($mp_data);
             foreach ($records as $record) {
                 $response['orderedItems'][] = LYDataHelper::formatActivityObject($account, $record);
             }
