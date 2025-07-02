@@ -1,4 +1,4 @@
-<?pyp
+<?php
 
 class LYDataHelper
 {
