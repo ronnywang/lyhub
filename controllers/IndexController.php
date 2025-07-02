@@ -254,6 +254,53 @@ class IndexController extends MiniEngine_Controller
         return $this->json($response);
     }
 
+	public function inboxAction()
+    {
+        $domain = $_SERVER['HTTP_HOST'];
+        $account = urldecode(explode('/', $_SERVER['REQUEST_URI'])[2] ?? '');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('HTTP/1.1 405 Method Not Allowed');
+            exit;
+        }
+        $request_body = file_get_contents('php://input');
+        $data = json_decode($request_body);
+
+        if (!ActivityPubHelper::verify_http_signature($_SERVER, $request_body)) {
+            header('HTTP/1.1 401 Unauthorized');
+            echo 'Signature verification failed.';
+            exit;
+        }
+
+        if (($data->type ?? '') == 'Follow') {
+            $follower_actor_url = $data->actor ?? '';
+            $follower_actor_data = json_decode(file_get_contents($follower_actor_url, false, stream_context_create(['http' => ['header' => 'Accept: application/activity+json']])));
+            $follower_inbox_url = $follower_actor_data->inbox ?? '';
+
+            $follower_jsonl_file = __DIR__ . "/../data/followers-{$account}.jsonl";
+            file_put_contents($follower_jsonl_file, json_encode([
+                'type' => 'Follow',
+                'actor' => $follower_actor_url,
+                'object' => "https://{$domain}/users/{$account}",
+                'data' => $data,
+            ]) . "\n", FILE_APPEND);
+
+            ActivityPubHelper::send_accept_activity($data, $account, $follower_inbox_url, $domain);
+            header('HTTP/1.1 202 Accepted');
+            exit;
+		} else if (($data->type ?? '') == 'Undo') {
+            $follower_actor_url = $data->actor ?? '';
+            file_put_contents(__DIR__ . "/../data/followers-{$account}.jsonl", json_encode([
+                'type' => 'Undo',
+                'actor' => $follower_actor_url,
+                'object' => "https://{$domain}/users/{$account}",
+                'data' => $data,
+            ]) . "\n", FILE_APPEND);
+            header('HTTP/1.1 202 Accepted');
+            exit;
+        }
+	}
+
     public function outboxAction()
     {
         $account = urldecode(explode('/', $_SERVER['REQUEST_URI'])[2] ?? '');

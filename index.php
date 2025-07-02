@@ -15,6 +15,7 @@ MiniEngine::dispatch(function($uri){
         }
         if (in_array($terms[2] ?? false, [
             'outbox',
+			'inbox',
         ])) {
             return ['index', $terms[2]];
         }
