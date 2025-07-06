@@ -203,6 +203,12 @@ class IndexController extends MiniEngine_Controller
         }
         $request_body = file_get_contents('php://input');
         $data = json_decode($request_body);
+        PostLog::insert([
+            'post_at' => time(),
+            'post_from' => $_SERVER['REMOTE_ADDR'],
+            'type' => 'inbox',
+            'data' => json_encode($data),
+        ]);
 
         if (!ActivityPubHelper::verify_http_signature($_SERVER, $request_body)) {
             header('HTTP/1.1 401 Unauthorized');
@@ -246,6 +252,16 @@ class IndexController extends MiniEngine_Controller
 
         if (array_key_exists('cursor', $_GET)) {
             return $this->outbox_cursor($account, $domain, $_GET['cursor']);
+        }
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $request_body = file_get_contents('php://input');
+            $data = json_decode($request_body);
+            PostLog::insert([
+                'post_at' => time(),
+                'post_from' => $_SERVER['REMOTE_ADDR'],
+                'type' => 'outbox',
+                'data' => json_encode($data),
+            ]);
         }
         $response = [];
         $response['@context'] = 'https://www.w3.org/ns/activitystreams';
