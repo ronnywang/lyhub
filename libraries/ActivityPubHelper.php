@@ -43,7 +43,23 @@ class ActivityPubHelper
 		$string_to_sign = rtrim($string_to_sign, "\n");
 
 		// Verify
-		return openssl_verify($string_to_sign, $signature, $remote_public_key, OPENSSL_ALGO_SHA256) === 1;
+        $ret = openssl_verify($string_to_sign, $signature, $remote_public_key, OPENSSL_ALGO_SHA256) === 1;
+        if ($ret) {
+            try {
+                Actor::insert([
+                    'actor_id' => $remote_actor_data['id'],
+                    'created_at' => time(),
+                    'updated_at' => time(),
+                    'data' => $remote_actor_data,
+                ]);
+            } catch (MiniEngine_Table_DuplicateException $e) {
+                Actor::search(['actor_id' => $remote_actor_data['id']])->first()->update([
+                    'updated_at' => time(),
+                    'data' => $remote_actor_data,
+                ]);
+            }
+        }
+        return $ret;
 	}
 
 	public static function send_accept_activity($follow_activity, $our_account, $follower_inbox_url, $domain)
