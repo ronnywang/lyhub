@@ -262,6 +262,11 @@ class IndexController extends MiniEngine_Controller
                 'type' => 'outbox',
                 'data' => json_encode($data),
             ]);
+            if (!ActivityPubHelper::verify_http_signature($_SERVER, $request_body)) {
+                header('HTTP/1.1 401 Unauthorized');
+                echo 'Signature verification failed.';
+                exit;
+            }
         }
         $response = [];
         $response['@context'] = 'https://www.w3.org/ns/activitystreams';
