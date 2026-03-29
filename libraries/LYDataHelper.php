@@ -8,20 +8,22 @@ class LYDataHelper
         if ($record[0] == 'bill-first' or $record[0] == 'bill-second') {
             $id = $record[2]->議案編號 ?? '';
             $content = sprintf("<p>{$record[2]->議案名稱}</p>\n")
-                .sprintf("<p>提案人：%s</p>\n", implode(',', $record[2]->提案人))
-                .sprintf("<p>連署人：%s</p>\n", implode(',', $record[2]->連署人))
+                .sprintf("<p>提案人：%s</p>\n", implode(',', (array)($record[2]->提案人 ?? [])))
+                .sprintf("<p>連署人：%s</p>\n", implode(',', (array)($record[2]->連署人 ?? [])))
                 .sprintf('<p>案由：%s</p>', mb_strimwidth($record[2]->案由, 0, 200, '...'))
-                .sprintf('<p><a href="%s" target="_blank" rel="nofollow noopener noreferrer" translate="no"><span class="invisible">https://</span><span class="">%s</span><span class="invisible"></span></a></p>',
+                .sprintf('<p><a href="%s" target="_blank" rel="nofollow noopener noreferrer" translate="no"><span class="invisible">https://</span><span class="ellipsis">%s</span><span class="invisible">%s</span></a></p>',
                     "https://ppg.ly.gov.tw/ppg/bills/{$record[2]->議案編號}/details",
-                    '立法院議事暨公報資訊網議案資料')
+                    'ppg.ly.gov.tw',
+                    "/ppg/bills/{$record[2]->議案編號}/details")
                 ;
         } else {
             $id = $record[2]->IVOD_ID;
             $content = sprintf("<p>IVOD 會議發言：%s %s</p>", $record[2]->日期, $record[2]->委員發言時間)
                 . sprintf("<p>%s</p>", mb_strimwidth($record[2]->會議名稱, 0, 200, '...'))
-                . sprintf('<p><a href="%s" target="_blank" rel="nofollow noopener noreferrer" translate="no"><span class="invisible">https://</span><span class="">%s</span><span class="invisible"></span></a></p>',
+                . sprintf('<p><a href="%s" target="_blank" rel="nofollow noopener noreferrer" translate="no"><span class="invisible">https://</span><span class="ellipsis">%s</span><span class="invisible">%s</span></a></p>',
                     "https://ivod.ly.gov.tw/Play/Clip/1M/{$id}",
-                    '立法院 議事轉播 網際網路多媒體隨選視訊(ivod)系統')
+                    'ivod.ly.gov.tw',
+                    "/Play/Clip/1M/{$id}")
                 ;
         }
         $ret['id'] = "https://{$_SERVER['HTTP_HOST']}/users/{$account}/statuses/{$record[0]}-{$id}";

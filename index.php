@@ -23,6 +23,12 @@ MiniEngine::dispatch(function($uri){
             return ['index', $terms[2]];
         }
     }
+    if ($uri == '/viewer') {
+        return ['viewer', 'index'];
+    }
+    if (strpos($uri, '/viewer/') === 0) {
+        return ['viewer', 'account'];
+    }
     // default
     return null;
 });
