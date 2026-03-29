@@ -225,20 +225,15 @@ class IndexController extends MiniEngine_Controller
                 echo 'Invalid actor data.';
                 exit;
             }
-            $follower_inbox_url = $follower_actor_data->inbox ?? '';
-            $share_inbox_url = $follower_actor_data->endpoints->sharedInbox ?? '';
+            $follower_inbox_url = $follower_actor_data->endpoints->sharedInbox ?? $follower_actor_data->inbox ?? '';
 
             ActivityPubHelper::send_accept_activity($data, $account, $follower_inbox_url, $domain);
+            Follower::follow($account, $follower_actor_url, $follower_inbox_url, true);
             header('HTTP/1.1 202 Accepted');
             exit;
 		} else if (($data->type ?? '') == 'Undo') {
             $follower_actor_url = $data->actor ?? '';
-            file_put_contents(__DIR__ . "/../data/followers-{$account}.jsonl", json_encode([
-                'type' => 'Undo',
-                'actor' => $follower_actor_url,
-                'object' => "https://{$domain}/users/{$account}",
-                'data' => $data,
-            ]) . "\n", FILE_APPEND);
+            Follower::follow($account, $follower_actor_url, null, false);
             header('HTTP/1.1 202 Accepted');
             exit;
         }

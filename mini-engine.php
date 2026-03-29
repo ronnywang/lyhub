@@ -144,7 +144,7 @@ class MiniEngine
         try {
             $stmt->execute($copy_params);
         } catch (PDOException $e) {
-            if ($e->getCode() == 23505) {
+            if ($e->getCode() == 23505 or $e->getCode() == 23000) {
                 throw new MiniEngine_Table_DuplicateException($e->getMessage());
             }
             throw $e;
@@ -780,7 +780,7 @@ class MiniEngine_Table
         try {
             $stmt = MiniEngine::dbExecute($sql, $params);
         } catch (PDOException $e) {
-            if ($e->getCode() == 23505) {
+            if ($e->getCode() == 23505 or $e->getCode() == 23000) {
                 throw new MiniEngine_Table_DuplicateException($e->getMessage());
             }
             throw $e;
