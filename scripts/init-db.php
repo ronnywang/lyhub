@@ -5,6 +5,7 @@ $tables = [
     'Actor' => fn() => Actor::createTable(),
     'Follower' => fn() => Follower::createTable(),
     'PostLog' => fn() => PostLog::createTable(),
+    'PushedActivity' => fn() => PushedActivity::createTable(),
 ];
 
 foreach ($tables as $name => $create) {
