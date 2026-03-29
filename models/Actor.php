@@ -16,7 +16,7 @@ class Actor extends MiniEngine_Table
     public static function findByURL($url)
     {
         if (!$actor = Actor::search(['actor_id' => $url])->first() or $actor->updated_at < time() - 86400) {
-            $data = json_decode(file_get_contents($follower_actor_url, false, stream_context_create(['http' => ['header' => 'Accept: application/activity+json']])));
+            $data = json_decode(file_get_contents($url, false, stream_context_create(['http' => ['header' => 'Accept: application/activity+json']])));
             if (($data->id ?? false) != $url or ($data->type ?? false) != 'Person') {
                 throw new Exception('Invalid actor data');
             }
