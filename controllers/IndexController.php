@@ -218,16 +218,15 @@ class IndexController extends MiniEngine_Controller
 
         if (($data->type ?? '') == 'Follow') {
             $follower_actor_url = $data->actor ?? '';
-            $follower_actor_data = json_decode(file_get_contents($follower_actor_url, false, stream_context_create(['http' => ['header' => 'Accept: application/activity+json']])));
+            try {
+                $follower_actor_data = Actor::findByURL($follower_actor_url);
+            } catch (Exception $e) {
+                header('HTTP/1.1 400 Bad Request');
+                echo 'Invalid actor data.';
+                exit;
+            }
             $follower_inbox_url = $follower_actor_data->inbox ?? '';
-
-            $follower_jsonl_file = __DIR__ . "/../data/followers-{$account}.jsonl";
-            file_put_contents($follower_jsonl_file, json_encode([
-                'type' => 'Follow',
-                'actor' => $follower_actor_url,
-                'object' => "https://{$domain}/users/{$account}",
-                'data' => $data,
-            ]) . "\n", FILE_APPEND);
+            $share_inbox_url = $follower_actor_data->endpoints->sharedInbox ?? '';
 
             ActivityPubHelper::send_accept_activity($data, $account, $follower_inbox_url, $domain);
             header('HTTP/1.1 202 Accepted');

@@ -11,4 +11,9 @@ class LogController extends MiniEngine_Controller
     {
         return $this->json(Actor::search(1)->toArray());
     }
+
+    public function followerAction()
+    {
+        return $this->json(Follower::search(1)->toArray());
+    }
 }

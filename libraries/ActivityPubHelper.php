@@ -109,7 +109,8 @@ class ActivityPubHelper
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-		curl_exec($ch);
+        $content = curl_exec($ch);
+        $info = curl_getinfo($ch);
 		curl_close($ch);
 	}
 
