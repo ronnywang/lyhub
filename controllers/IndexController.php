@@ -107,8 +107,8 @@ class IndexController extends MiniEngine_Controller
         ];
         $response['id'] = "https://{$domain}/users/{$account}";
         $response['type'] = 'Person';
-        //$response['following'] = "https://{$domain}/users/{$account}/following";
-        //$response['followers'] = "https://{$domain}/users/{$account}/followers";
+        $response['following'] = "https://{$domain}/users/{$account}/following";
+        $response['followers'] = "https://{$domain}/users/{$account}/followers";
         $response['inbox'] = "https://{$domain}/users/{$account}/inbox";
         $response['outbox'] = "https://{$domain}/users/{$account}/outbox";
         //$response['featured'] = "https://{$domain}/users/{$account}/featured";
@@ -279,6 +279,67 @@ class IndexController extends MiniEngine_Controller
         }
         $response['first'] = 'https://' . $domain . '/users/' . $account . '/outbox?cursor=0';
         $response['last'] = 'https://' . $domain . '/users/' . $account . '/outbox?cursor=-1';
+        $this->header('Content-Type: application/activity+json; charset=utf-8');
+        return $this->json($response);
+    }
+
+    public function followersAction()
+    {
+        $account = urldecode(explode('/', $_SERVER['REQUEST_URI'])[2] ?? '');
+        $domain = $_SERVER['HTTP_HOST'];
+
+        $total = count(Follower::search(['account' => $account, 'status' => 1]));
+
+        if (isset($_GET['page'])) {
+            $page = max(1, intval($_GET['page']));
+            $per_page = 40;
+            $rows = Follower::search(['account' => $account, 'status' => 1])
+                ->limit($per_page)
+                ->offset(($page - 1) * $per_page)
+                ->toArray();
+            $follower_urls = array_column($rows, 'follower');
+
+            $response = [
+                '@context' => 'https://www.w3.org/ns/activitystreams',
+                'id' => "https://{$domain}/users/{$account}/followers?page={$page}",
+                'type' => 'OrderedCollectionPage',
+                'totalItems' => $total,
+                'partOf' => "https://{$domain}/users/{$account}/followers",
+                'orderedItems' => $follower_urls,
+            ];
+            if ($total > $page * $per_page) {
+                $response['next'] = "https://{$domain}/users/{$account}/followers?page=" . ($page + 1);
+            }
+            if ($page > 1) {
+                $response['prev'] = "https://{$domain}/users/{$account}/followers?page=" . ($page - 1);
+            }
+        } else {
+            $response = [
+                '@context' => 'https://www.w3.org/ns/activitystreams',
+                'id' => "https://{$domain}/users/{$account}/followers",
+                'type' => 'OrderedCollection',
+                'totalItems' => $total,
+                'first' => "https://{$domain}/users/{$account}/followers?page=1",
+            ];
+        }
+
+        $this->header('Content-Type: application/activity+json; charset=utf-8');
+        return $this->json($response);
+    }
+
+    public function followingAction()
+    {
+        $account = urldecode(explode('/', $_SERVER['REQUEST_URI'])[2] ?? '');
+        $domain = $_SERVER['HTTP_HOST'];
+
+        $response = [
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id' => "https://{$domain}/users/{$account}/following",
+            'type' => 'OrderedCollection',
+            'totalItems' => 0,
+            'first' => "https://{$domain}/users/{$account}/following?page=1",
+        ];
+
         $this->header('Content-Type: application/activity+json; charset=utf-8');
         return $this->json($response);
     }

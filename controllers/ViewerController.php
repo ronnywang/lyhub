@@ -16,8 +16,15 @@ class ViewerController extends MiniEngine_Controller
             return strcmp($a->委員姓名, $b->委員姓名);
         });
 
+        // 一次查出所有帳號的追蹤人數
+        $follower_counts = [];
+        foreach (Follower::search(['status' => 1])->toArray() as $row) {
+            $follower_counts[$row['account']] = ($follower_counts[$row['account']] ?? 0) + 1;
+        }
+
         $this->view->legislators = $legislators;
         $this->view->domain = $_SERVER['HTTP_HOST'];
+        $this->view->follower_counts = $follower_counts;
     }
 
     public function accountAction()
@@ -34,12 +41,15 @@ class ViewerController extends MiniEngine_Controller
         $mp_id = $matches[1];
         $mp_data = LYDataHelper::getMPData($mp_id);
         $records = LYDataHelper::getMPRecords($mp_data);
+        $follower_count = count(Follower::search(['account' => $account, 'status' => 1]));
 
         $this->view->account = $account;
         $this->view->domain = $domain;
         $this->view->mp_data = $mp_data;
         $this->view->records = $records;
+        $this->view->follower_count = $follower_count;
         $this->view->actor_url = "https://{$domain}/users/{$account}";
         $this->view->outbox_url = "https://{$domain}/users/{$account}/outbox";
+        $this->view->followers_url = "https://{$domain}/users/{$account}/followers";
     }
 }

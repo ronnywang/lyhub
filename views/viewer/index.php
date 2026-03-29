@@ -19,6 +19,7 @@ header p { font-size: 0.85rem; opacity: 0.7; margin-top: 4px; }
 .card-name { font-weight: bold; font-size: 1rem; }
 .card-party { font-size: 0.78rem; margin-top: 3px; padding: 2px 6px; border-radius: 4px; display: inline-block; }
 .card-dist { font-size: 0.75rem; color: #666; margin-top: 4px; }
+.card-followers { font-size: 0.75rem; color: #888; margin-top: 3px; }
 .party-kmt { background: #2671d9; color: #fff; }
 .party-dpp { background: #1b9431; color: #fff; }
 .party-tpp { background: #28b8c6; color: #fff; }
@@ -60,6 +61,9 @@ foreach ($party_names as $party) {
         <div class="card-name"><?= $this->escape($mp->委員姓名) ?></div>
         <span class="card-party party-<?= $this->escape($party_css) ?>"><?= $this->escape($party) ?></span>
         <div class="card-dist"><?= $this->escape($mp->選區名稱 ?? '') ?></div>
+        <?php if (!empty($this->follower_counts[$account])) { ?>
+        <div class="card-followers">👥 <?= intval($this->follower_counts[$account]) ?></div>
+        <?php } ?>
       </div>
     </a>
 <?php } ?>

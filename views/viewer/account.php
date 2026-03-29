@@ -44,7 +44,7 @@ header a:hover { color: #fff; }
     <img src="<?= $this->escape($this->mp_data->照片位址 ?? '') ?>" alt="<?= $this->escape($this->mp_data->委員姓名) ?>">
     <div class="profile-info">
       <h2><?= $this->escape($this->mp_data->委員姓名) ?></h2>
-      <div class="handle">@<?= $this->escape($this->account) ?>@<?= $this->escape($this->domain) ?></div>
+      <div class="handle">@<?= $this->escape($this->account) ?>@<?= $this->escape($this->domain) ?> · 追蹤者 <?= intval($this->follower_count) ?> 人</div>
       <div class="summary"><?= $this->escape(sprintf(
         "第%02d屆立法委員\n黨籍：%s　選區：%s\n委員會：%s",
         $this->mp_data->屆,
@@ -55,6 +55,7 @@ header a:hover { color: #fff; }
       <div class="profile-links">
         <a href="<?= $this->escape($this->actor_url) ?>" target="_blank">Actor JSON</a>
         <a href="<?= $this->escape($this->outbox_url) ?>" target="_blank">Outbox JSON</a>
+        <a href="<?= $this->escape($this->followers_url) ?>" target="_blank">Followers JSON</a>
       </div>
     </div>
   </div>
